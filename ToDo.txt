@@ -10,3 +10,4 @@ This is here to serve as an ongoing to do list.
 5. Different type of database (something better than an xml)?  couchDB? 
 
 Anything else?
+test
