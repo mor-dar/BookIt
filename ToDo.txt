@@ -1,0 +1,12 @@
+This is here to serve as an ongoing to do list.
+
+1. Clean up java code.  
+2. After a everything is done, if the user comes back to BookIt, the program does not close the result view when it should
+   (The camera is active, but the result view is sitting on top of the camera preview, so the user can't see what he's trying to photograph).
+3. Need to implement multiple book check somehow.  The idea - run the sifts find the book with the largest number of matches, then throw out 
+   the sifts used, and run it again.  Do this until all books are under some threshold of matches ( ~50 good matches?). Note, we may need to 
+   change the return value to an array of links (strings) instead of just a single one.  
+4. Need to read the database into memory on load instead of onpicture taken.  
+5. Different type of database (something better than an xml)?  couchDB? 
+
+Anything else?
