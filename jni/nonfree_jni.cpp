@@ -1,8 +1,3 @@
-// A simple demo of JNI interface to implement SIFT detection for Android application using nonfree module in OpenCV4Android.
-// Created by Guohui Wang 
-// Email: robertwgh_at_gmail_com
-// Data: 2/26/2014
-
 #include <jni.h>
 #include <android/log.h>
 
@@ -18,11 +13,6 @@ using namespace std;
 
 #define  LOG_TAG    "BookIt"
 #define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
-
-
-
-
-
 
 const char* fileNames[] = {
 	"0262182629", "http://www.amazon.com/Processing-Programming-Handbook-Designers-Artists/dp/0262182629%3FSubscriptionId%3DAKIAJMFW6F37ROWP7LQA%26tag%3Dwwwbarkanidoc-20%26linkCode%3Dxm2%26camp%3D2025%26creative%3D165953%26creativeASIN%3D0262182629", 
@@ -187,9 +177,12 @@ std::string find_matches_sift(Mat& image,Mat& results){
 	sceneFeatures = getFeature(image);
 	LOGI("Detected %d keypoints\n", (int) sceneFeatures.keypoints.size());
 
+	LOGI("Start Reading the file\n");
 	// We now look for a match between the scene and the different sifts calculated.
     FileStorage fsCovers("/sdcard/Documents/bookSifts.xml", FileStorage::READ);
-
+	LOGI("Done Reading the database");
+	
+	
 	// Initialize the matcher
 	vector< vector<DMatch> > matches;
 	Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("FlannBased");

@@ -100,6 +100,10 @@ public class MainActivity extends Activity {
         
         // Load opencv
         OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_8, this, mLoaderCallback);
+        
+        // Load the "database" into memory here for quicker access later.
+         
+        
     }
 	
 	
