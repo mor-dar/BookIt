@@ -131,7 +131,7 @@ public class MainActivity extends Activity {
     }
     @Override
     public boolean onTouchEvent(MotionEvent event) /** When the user touches the screen, run sift **/
-    {
+    { 
 	  if (event.getAction() == MotionEvent.ACTION_DOWN) {  // finger touches the screen
 		 //if result
   		 if (mResultView.IsShowingResult)

@@ -6,6 +6,7 @@
 #include <opencv2/nonfree/features2d.hpp>
 #include <opencv2/nonfree/nonfree.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
 
 using namespace cv;
@@ -155,14 +156,10 @@ JNIEXPORT jstring JNICALL Java_com_example_bookit_NonfreeJNILib_runSift(JNIEnv *
 	Mat& inImg = *(Mat*)addrInputMat;
 	Mat& outImg = *(Mat*)addrOutputMat;
 	
-	
 	//LOGI("Start building orbs! \n");
 	//build_sift_xml();
 	//LOGI("Done building orbs! \n");
 
-
-	
-	
 	std::string Link;
 	LOGI("Start find_matches! \n");
 	//Link = find_matches_sift(inImg,outImg);
@@ -170,15 +167,7 @@ JNIEXPORT jstring JNICALL Java_com_example_bookit_NonfreeJNILib_runSift(JNIEnv *
 	LOGI("End find_matches! \n");
 	
 	return env->NewStringUTF(Link.c_str());
-	
 }
-
-
-
-
-
-
-
 
 std::string find_matches(Mat& image,Mat& results){
 		
@@ -279,20 +268,21 @@ std::string find_matches(Mat& image,Mat& results){
 	results = image;
 	
 	//-- Compute Homography using RANSAC --//
-//	Mat H = findHomography( cover, scene, CV_RANSAC );
-//	perspectiveTransform( cover_corners, scene_corners, H);
+	Mat H = findHomography( cover, scene, CV_RANSAC );
+	
+	
+	perspectiveTransform( cover_corners, scene_corners, H);
 
   //-- Draw lines between the corners (the mapped object in the scene - image_2 ) --//  
-//	line( results, scene_corners[0], scene_corners[1], Scalar(0, 255, 0), 4 );
-//	line( results, scene_corners[1], scene_corners[2], Scalar( 0, 255, 0), 4 );
-//	line( results, scene_corners[2], scene_corners[3], Scalar( 0, 255, 0), 4 );
-//	line( results, scene_corners[3], scene_corners[0], Scalar( 0, 255, 0), 4 );
+	line( results, scene_corners[0], scene_corners[1], Scalar(0, 255, 0), 4 );
+	line( results, scene_corners[1], scene_corners[2], Scalar( 0, 255, 0), 4 );
+	line( results, scene_corners[2], scene_corners[3], Scalar( 0, 255, 0), 4 );
+	line( results, scene_corners[3], scene_corners[0], Scalar( 0, 255, 0), 4 );
 
 	
-	// Save the results image
-	// const char * imgOutFile = "/sdcard/Documents/img1_result.jpg";
-	// imwrite(imgOutFile, results);
-	
+	// Convert the image to rgb instead of bgr
+	cv::cvtColor(results, results, CV_BGR2RGB);
+		
 	return FinalLink;
 	
 }
@@ -307,7 +297,7 @@ int build_sift_xml(){
 	char * LINK = new char[512];
 	Mat image; //to store the current input image
 	std::vector<Point2f> keypoint_points;  
-	std::vector<Point2f> cover_corners(4);
+	std::vector<Point2f> cover_corners;
 	
 	// Set the file to write to.
 	FileStorage fs("/sdcard/Documents/bookOrbs.xml", FileStorage::WRITE);
@@ -336,8 +326,10 @@ int build_sift_xml(){
 		}
 		
 		// Get the corners of the cover (this is used in homography).
-		cover_corners[0] = cvPoint(0,0); cover_corners[1] = cvPoint( image.cols, 0 );
-		cover_corners[2] = cvPoint( image.cols, image.rows ); cover_corners[3] = cvPoint( 0, image.rows );		
+		cover_corners.push_back(cvPoint(0,0));
+		cover_corners.push_back(cvPoint( image.cols, 0 ));
+		cover_corners.push_back(cvPoint( image.cols, image.rows ));
+		cover_corners.push_back(cvPoint( 0, image.rows ));
 		
 		//create the name and descriptor tags
 		strcpy(ASIN, fileNames[i]);
@@ -357,31 +349,19 @@ feature getFeature(Mat image){
 
 	feature features;
 	
-	// orb test
+	// the maximum number of features to extract.
 	int nFeatures = 2000;
 	
-	
+	// Create orb.
 	cv::ORB orb(nFeatures);
+	
+	// Get the keypoints and descriptors.
 	orb(image,cv::Mat(),features.keypoints,features.descriptor);
 	
+	// If the descriptor is not the correct format, convert it.
 	if(features.descriptor.type()!=CV_32F) {
     features.descriptor.convertTo(features.descriptor, CV_32F);
 	}
 	
-	// Create orb feature detector
-	//OrbFeatureDetector detector(nFeatures);
-	
-	// int minHessian = 400;
-	// SurfFeatureDetector detector(minHessian);
-	
-	// Create a SIFT feature detector.
-//	SiftFeatureDetector detector;
-	
-	// Get the keypoints 
-//	detector.detect(image, features.keypoints);
-	
-	// Get the descriptor.
-//	detector.compute(image, features.keypoints, features.descriptor);
-	// extractor.compute(image,features.keypoints,features.descriptor);
 	return features;
 }
