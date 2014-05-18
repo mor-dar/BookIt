@@ -126,19 +126,21 @@ struct feature {
 	};
 	
 	
+	
 
 typedef unsigned char uchar;
 
 
 int build_sift_xml();
 std::string find_matches_sift(Mat& image,Mat& results);
+std::string find_matches(Mat& image,Mat& results);
 feature getFeature(Mat image);
 
 
 // OLD FUNCTIONS
 int run_demo();
 int run_sift(Mat& image,Mat& results);
-std::string find_matches(Mat& image,Mat& results);
+
 int build_Dictionary();
 int buildDescriptorMat();
 
@@ -148,29 +150,37 @@ extern "C" {
 
 JNIEXPORT jstring JNICALL Java_com_example_bookit_NonfreeJNILib_runSift(JNIEnv * env, jobject obj,jlong addrInputMat, jlong addrOutputMat)//, jobjectArray fileNameArray)
 {
-LOGI("Test! \n");
+
 	// Load the mat from address
 	Mat& inImg = *(Mat*)addrInputMat;
 	Mat& outImg = *(Mat*)addrOutputMat;
 	
 	
-	//LOGI("Start building sifts! \n");
+	//LOGI("Start building orbs! \n");
 	//build_sift_xml();
-	//LOGI("Done building sifts! \n");
+	//LOGI("Done building orbs! \n");
 
 
 	
 	
 	std::string Link;
 	LOGI("Start find_matches! \n");
-	Link = find_matches_sift(inImg,outImg);
+	//Link = find_matches_sift(inImg,outImg);
+	Link = find_matches(inImg,outImg);
 	LOGI("End find_matches! \n");
 	
 	return env->NewStringUTF(Link.c_str());
 	
 }
 
-std::string find_matches_sift(Mat& image,Mat& results){
+
+
+
+
+
+
+
+std::string find_matches(Mat& image,Mat& results){
 		
 	// Get the sift of the input image.
 	feature sceneFeatures;
@@ -179,7 +189,7 @@ std::string find_matches_sift(Mat& image,Mat& results){
 
 	LOGI("Start Reading the file\n");
 	// We now look for a match between the scene and the different sifts calculated.
-    FileStorage fsCovers("/sdcard/Documents/bookSifts.xml", FileStorage::READ);
+    FileStorage fsCovers("/sdcard/Documents/bookOrbs.xml", FileStorage::READ);
 	LOGI("Done Reading the database");
 	
 	
@@ -197,6 +207,8 @@ std::string find_matches_sift(Mat& image,Mat& results){
 	std::vector<Point2f> keypoint_points;
 	std::vector<Point2f> cover;
 	std::vector<Point2f> scene;
+	
+	std::vector<KeyPoint> goodKeypoints;
 	
 	// Load the File Node
 	FileNode coverDescriptors = fsCovers["descriptors"];
@@ -255,24 +267,26 @@ std::string find_matches_sift(Mat& image,Mat& results){
 	{
     cover.push_back( keypoint_points[ good_matches[i].queryIdx ]);
     scene.push_back( sceneFeatures.keypoints[ good_matches[i].trainIdx ].pt ); // the scene
+	
+	goodKeypoints.push_back(sceneFeatures.keypoints[ good_matches[i].trainIdx ]);
 	}
 	
 	// Show keypoints in the result image image.
-	// Scalar keypointColor = Scalar(255, 0, 0);
-	// drawKeypoints(image, sceneFeatures.keypoints, results, keypointColor, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+	 Scalar keypointColor = Scalar(255, 0, 0);
+	 drawKeypoints(image, goodKeypoints, results, keypointColor, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 	
 	// Copy the image to the results.
 	results = image;
 	
 	//-- Compute Homography using RANSAC --//
-	Mat H = findHomography( cover, scene, CV_RANSAC );
-	perspectiveTransform( cover_corners, scene_corners, H);
+//	Mat H = findHomography( cover, scene, CV_RANSAC );
+//	perspectiveTransform( cover_corners, scene_corners, H);
 
   //-- Draw lines between the corners (the mapped object in the scene - image_2 ) --//  
-	line( results, scene_corners[0], scene_corners[1], Scalar(0, 255, 0), 4 );
-	line( results, scene_corners[1], scene_corners[2], Scalar( 0, 255, 0), 4 );
-	line( results, scene_corners[2], scene_corners[3], Scalar( 0, 255, 0), 4 );
-	line( results, scene_corners[3], scene_corners[0], Scalar( 0, 255, 0), 4 );
+//	line( results, scene_corners[0], scene_corners[1], Scalar(0, 255, 0), 4 );
+//	line( results, scene_corners[1], scene_corners[2], Scalar( 0, 255, 0), 4 );
+//	line( results, scene_corners[2], scene_corners[3], Scalar( 0, 255, 0), 4 );
+//	line( results, scene_corners[3], scene_corners[0], Scalar( 0, 255, 0), 4 );
 
 	
 	// Save the results image
@@ -296,7 +310,7 @@ int build_sift_xml(){
 	std::vector<Point2f> cover_corners(4);
 	
 	// Set the file to write to.
-	FileStorage fs("/sdcard/Documents/bookSifts.xml", FileStorage::WRITE);
+	FileStorage fs("/sdcard/Documents/bookOrbs.xml", FileStorage::WRITE);
 	
 	fs << "descriptors" << "[";
 	
@@ -341,24 +355,33 @@ feature getFeature(Mat image){
 	// This function calculates the feature using some Detector and Extractor.  
 	// It is done this way for easy swapping of descriptor/extractors.
 
+	feature features;
+	
+	// orb test
+	int nFeatures = 2000;
+	
+	
+	cv::ORB orb(nFeatures);
+	orb(image,cv::Mat(),features.keypoints,features.descriptor);
+	
+	if(features.descriptor.type()!=CV_32F) {
+    features.descriptor.convertTo(features.descriptor, CV_32F);
+	}
+	
+	// Create orb feature detector
+	//OrbFeatureDetector detector(nFeatures);
+	
 	// int minHessian = 400;
 	// SurfFeatureDetector detector(minHessian);
-	// OrbFeatureDetector detector;
-	// SiftDescriptorExtractor extractor;
-	// // detector= new cv::OrbFeatureDetector();
-	// // extractor = new cv::SiftDescriptorExtractor();
-	  
-
-	feature features;
-
+	
 	// Create a SIFT feature detector.
-	SiftFeatureDetector detector;
+//	SiftFeatureDetector detector;
 	
 	// Get the keypoints 
-	detector.detect(image, features.keypoints);
+//	detector.detect(image, features.keypoints);
 	
 	// Get the descriptor.
-	detector.compute(image, features.keypoints, features.descriptor);
+//	detector.compute(image, features.keypoints, features.descriptor);
 	// extractor.compute(image,features.keypoints,features.descriptor);
 	return features;
 }

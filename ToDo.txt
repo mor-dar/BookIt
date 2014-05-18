@@ -6,7 +6,11 @@ This is here to serve as an ongoing to do list.
 3. Need to implement multiple book check somehow.  The idea - run the sifts find the book with the largest number of matches, then throw out 
    the sifts used, and run it again.  Do this until all books are under some threshold of matches ( ~50 good matches?). Note, we may need to 
    change the return value to an array of links (strings) instead of just a single one.  
+
+   Should we use homography for this (sometimes doesn't work - has issues if there is a false good match) or display the book covers 
+   in a gridview for user selection?  Does amazons api allow for this to happen easily?
+
 4. Need to read the database into memory on load instead of onpicture taken.  
 5. Different type of database (something better than an xml)?  couchDB? 
-
+6. Fix colors on result view.
 Anything else?

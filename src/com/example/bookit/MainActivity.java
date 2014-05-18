@@ -54,7 +54,7 @@ public class MainActivity extends Activity {
 		
 	private final static String INPUT_IMG_FILENAME = "/Documents/img1.jpg"; 
 	private final static String INPUT_IMG_PATH = Environment.getExternalStorageDirectory().toString() + INPUT_IMG_FILENAME;
-	
+	 
 	//flag to check if camera is ready for capture
 	private boolean mCameraReadyFlag = true;
 	
@@ -143,8 +143,8 @@ public class MainActivity extends Activity {
   		 {
   			mCameraReadyFlag = false;  			
   			mPreview.camera.takePicture(shutterCallback, rawCallback, jpegCallback);
-  			
-
+  			 
+   
 			
 			
   		 }
