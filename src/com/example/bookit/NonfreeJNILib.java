@@ -23,6 +23,8 @@ public class NonfreeJNILib  {
     public static native void runDemo();
 
 	public static native String runSift(long inputAddr, long outputAddr, String[] bookCovers);
+	
+	public static native boolean BuildDatabase();
 
 	
 }

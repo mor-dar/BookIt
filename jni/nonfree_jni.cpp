@@ -118,7 +118,7 @@ const char* fileNames[] = {
 	"1451659253", "http://www.amazon.com/Inside-Box-Creativity-Breakthrough-Results/dp/1451659253%3FSubscriptionId%3DAKIAJMFW6F37ROWP7LQA%26tag%3Dwwwbarkanidoc-20%26linkCode%3Dxm2%26camp%3D2025%26creative%3D165953%26creativeASIN%3D1451659253", 
 	"B000PC0S7I", "http://www.amazon.com/gp/reader/B000PC0S7I"
 };
-const char * basePath = "/sdcard/Documents/Books/";
+const char * basePath = "/sdcard/BookIt/Books/";
 void buildDictionary();
 
 struct feature {
@@ -126,6 +126,14 @@ struct feature {
 	vector<KeyPoint> keypoints;
 	};
 	
+struct matching {
+	std::vector<int> index;
+	std::vector<int> numMatches;
+	vector< vector < DMatch > > goodKeypoints;
+	vector < std::string > link;
+	vector < vector < Point2f > > corners;
+	vector < vector < Point2f > > keypoint_points;
+};
 	
 	
 
@@ -149,6 +157,10 @@ extern "C" {
     JNIEXPORT jstring JNICALL Java_com_example_bookit_NonfreeJNILib_runSift(JNIEnv * env, jobject obj, jlong addrInputMat, jlong addrOutputMat);//, jobjectArray fileNameArray);
 };
 
+extern "C" {
+    JNIEXPORT jboolean JNICALL Java_com_example_bookit_NonfreeJNILib_BuildDatabase(JNIEnv * env, jobject obj);//, jobjectArray fileNameArray);
+};
+
 JNIEXPORT jstring JNICALL Java_com_example_bookit_NonfreeJNILib_runSift(JNIEnv * env, jobject obj,jlong addrInputMat, jlong addrOutputMat)//, jobjectArray fileNameArray)
 {
 
@@ -169,6 +181,23 @@ JNIEXPORT jstring JNICALL Java_com_example_bookit_NonfreeJNILib_runSift(JNIEnv *
 	return env->NewStringUTF(Link.c_str());
 }
 
+
+
+JNIEXPORT jboolean JNICALL Java_com_example_bookit_NonfreeJNILib_BuildDatabase(JNIEnv * env, jobject obj)//, jobjectArray fileNameArray)
+{
+
+
+	LOGI("Start building orbs! \n");
+	build_sift_xml();
+	LOGI("Done building orbs! \n");
+
+	return true;
+}
+
+
+
+
+
 std::string find_matches(Mat& image,Mat& results){
 		
 	// Get the sift of the input image.
@@ -178,7 +207,7 @@ std::string find_matches(Mat& image,Mat& results){
 
 	LOGI("Start Reading the file\n");
 	// We now look for a match between the scene and the different sifts calculated.
-    FileStorage fsCovers("/sdcard/Documents/bookOrbs.xml", FileStorage::READ);
+    FileStorage fsCovers("/sdcard/BookIt/database.xml", FileStorage::READ);
 	LOGI("Done Reading the database");
 	
 	
@@ -198,6 +227,10 @@ std::string find_matches(Mat& image,Mat& results){
 	std::vector<Point2f> scene;
 	
 	std::vector<KeyPoint> goodKeypoints;
+	
+	matching allMatches;
+	
+	
 	
 	// Load the File Node
 	FileNode coverDescriptors = fsCovers["descriptors"];
@@ -230,54 +263,133 @@ std::string find_matches(Mat& image,Mat& results){
 			}
 		}
 
-		// If this is the best one thus far, update the link, keypoints, and corners
-		if (good_matches.size() > numGoodMatch)
-		{
+		
+		// Add the good matches information as well as the index to the matching vector
+		allMatches.index.push_back(idx);
+		allMatches.numMatches.push_back(good_matches.size());
+		allMatches.goodKeypoints.push_back(good_matches);
+		
+		(*it)["LINK"] >> FinalLink;
 			
-			numGoodMatch = good_matches.size();
-			(*it)["LINK"] >> FinalLink;
+		// Get the corners of the matched cover.
+		read((*it)["cover_corners"],cover_corners);
 			
-			// Get the corners of the matched cover.
-			read((*it)["cover_corners"],cover_corners);
+		// Get the keypoint points of the match.
+		(*it)["KeypointPT"] >> keypoint_points;
+		
+		allMatches.link.push_back(FinalLink);
+		allMatches.corners.push_back(cover_corners);
+		allMatches.keypoint_points.push_back(keypoint_points);
+		
+//		// If this is the best one thus far, update the link, keypoints, and corners
+//		if (good_matches.size() > numGoodMatch)
+//		{
 			
-			// Get the keypoint points of the match.
-			(*it)["KeypointPT"] >> keypoint_points;
-		}
+//			numGoodMatch = good_matches.size();
+//			(*it)["LINK"] >> FinalLink;
+			
+//			// Get the corners of the matched cover.
+//			read((*it)["cover_corners"],cover_corners);
+			
+//			// Get the keypoint points of the match.
+//			(*it)["KeypointPT"] >> keypoint_points;
+//		}
 		
 		// Release the memory
 		desCover.release();
 	}
 	fsCovers.release();
 	
-	//-- Localize the book cover --//
-
-    //-- Get the point locations of the keypoints from good matches	--//
-	for( int i = 0; i < good_matches.size(); i++ )
-	{
-    cover.push_back( keypoint_points[ good_matches[i].queryIdx ]);
-    scene.push_back( sceneFeatures.keypoints[ good_matches[i].trainIdx ].pt ); // the scene
 	
-	goodKeypoints.push_back(sceneFeatures.keypoints[ good_matches[i].trainIdx ]);
+// ############### Now that we have all the relevant information, start by finding the best book matches while simultaneously checking that there is at least one set of matches over the threshold.
+	
+	
+	vector < int > indexAboveThreshold;
+	
+	int threshold = 100; // This is the minimal number of matches.
+	
+	int bestMatchidx;
+	int mostMatches = 0;
+	// Get the one with the maximum number of matches.
+	for ( int i = 0; i < allMatches.index.size(); i++){
+		if (allMatches.numMatches[i] > mostMatches) {
+			mostMatches = allMatches.numMatches[i];
+			bestMatchidx = allMatches.index[i];
+		}
+		
+		// Note which indices have more than the threshold number of matches.
+		if (allMatches.numMatches[i] > threshold) {
+			indexAboveThreshold.push_back(allMatches.index[i]);
+		}
 	}
 	
+	LOGI("The Best Match: %d matches.\n", (int) mostMatches);
+	LOGI("Number of Matches over threshold: %d \n", (int) indexAboveThreshold.size());
+
+	
+	// Get the best one (regardless of threshold).
+	
+	FinalLink = allMatches.link[bestMatchidx];
+	keypoint_points = allMatches.keypoint_points[bestMatchidx];
+	cover_corners = allMatches.corners[bestMatchidx];
+	
+	// If the number over the thresholds is greater than one, read in the other possibilities.  
+	if (indexAboveThreshold.size() > 1) {
+	
+		// Remove the best match from the list (as it is already added).	
+		for (int i = 0; i < indexAboveThreshold.size(); i++) {
+			if (indexAboveThreshold[i] == bestMatchidx) {
+				indexAboveThreshold.erase(indexAboveThreshold.begin() + i);
+			}
+
+		}
+
+	LOGI("Number of Matches after delete: %d \n", (int) indexAboveThreshold.size());	
+
+		// For each cover with a high number of matches.
+	
+		// Remove the good matches found in better keypoint matches.
+		// NOTE: trainIdx is the index in the scene, queryIdx is the index of the keypoint in the cover.
+		// So we remove the matching queryIdx. 
+	
+		// If there are still > threshold number of good matches left, save this cover as an option.
+		
+		
+	}
+
+	
+	
+	
+	
+	//-- Localize the book cover --//
+
+//    //-- Get the point locations of the keypoints from good matches	--//
+//	for( int i = 0; i < good_matches.size(); i++ )
+//	{
+//    cover.push_back( keypoint_points[ good_matches[i].queryIdx ]);
+//    scene.push_back( sceneFeatures.keypoints[ good_matches[i].trainIdx ].pt ); // the scene
+	
+//	goodKeypoints.push_back(sceneFeatures.keypoints[ good_matches[i].trainIdx ]);
+//	}
+	
 	// Show keypoints in the result image image.
-	 Scalar keypointColor = Scalar(255, 0, 0);
-	 drawKeypoints(image, goodKeypoints, results, keypointColor, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+//	 Scalar keypointColor = Scalar(255, 0, 0);
+//	 drawKeypoints(image, goodKeypoints, results, keypointColor, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 	
 	// Copy the image to the results.
 	results = image;
 	
 	//-- Compute Homography using RANSAC --//
-	Mat H = findHomography( cover, scene, CV_RANSAC );
+//	Mat H = findHomography( cover, scene, CV_RANSAC );
 	
 	
-	perspectiveTransform( cover_corners, scene_corners, H);
+//	perspectiveTransform( cover_corners, scene_corners, H);
 
   //-- Draw lines between the corners (the mapped object in the scene - image_2 ) --//  
-	line( results, scene_corners[0], scene_corners[1], Scalar(0, 255, 0), 4 );
-	line( results, scene_corners[1], scene_corners[2], Scalar( 0, 255, 0), 4 );
-	line( results, scene_corners[2], scene_corners[3], Scalar( 0, 255, 0), 4 );
-	line( results, scene_corners[3], scene_corners[0], Scalar( 0, 255, 0), 4 );
+//	line( results, scene_corners[0], scene_corners[1], Scalar(0, 255, 0), 4 );
+//	line( results, scene_corners[1], scene_corners[2], Scalar( 0, 255, 0), 4 );
+//	line( results, scene_corners[2], scene_corners[3], Scalar( 0, 255, 0), 4 );
+//	line( results, scene_corners[3], scene_corners[0], Scalar( 0, 255, 0), 4 );
 
 	
 	// Convert the image to rgb instead of bgr
@@ -300,7 +412,7 @@ int build_sift_xml(){
 	std::vector<Point2f> cover_corners;
 	
 	// Set the file to write to.
-	FileStorage fs("/sdcard/Documents/bookOrbs.xml", FileStorage::WRITE);
+	FileStorage fs("/sdcard/BookIt/database.xml", FileStorage::WRITE);
 	
 	fs << "descriptors" << "[";
 	
@@ -342,6 +454,10 @@ int build_sift_xml(){
 	fs << "]";
 	fs.release();
 }
+
+
+
+
 
 feature getFeature(Mat image){
 	// This function calculates the feature using some Detector and Extractor.  

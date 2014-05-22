@@ -22,6 +22,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -51,27 +52,31 @@ public class MainActivity extends Activity {
 	Preview mPreview; 
 	ResultView mResultView;
 	private Context mContext = this; 
-		
-	private final static String INPUT_IMG_FILENAME = "/Documents/img1.jpg"; 
+	
+	private ProgressDialog dialog;
+	private String Link;
+	
+	
+	private final static String INPUT_IMG_FILENAME = "/Documents/img1.jpg";
 	private final static String INPUT_IMG_PATH = Environment.getExternalStorageDirectory().toString() + INPUT_IMG_FILENAME;
 	 
 	//flag to check if camera is ready for capture
-	private boolean mCameraReadyFlag = true;
+	private boolean mCameraReadyFlag = true; 
 	
 	 private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
 	        @Override
 	        public void onManagerConnected(int status) {
-	            switch (status) {
-	                case LoaderCallbackInterface.SUCCESS:
+	            switch (status) { 
+	                case LoaderCallbackInterface.SUCCESS: 
 	                {
 	                    Log.i(TAG, "OpenCV loaded successfully");
-//	                    mOpenCvCameraView.enableView();
+//	                    mOpenCvCameraView.enableView(); 
 	                } break;
 	                default: 
 	                {
 	                    super.onManagerConnected(status);
 	                } break;
-	            }
+	            } 
 	        }
 	    };
 	
@@ -101,14 +106,16 @@ public class MainActivity extends Activity {
         // Load opencv
         OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_8, this, mLoaderCallback);
         
-        // Load the "database" into memory here for quicker access later.
-         
         
     }
 	
 	
-	
-  //onKeyDown is used to monitor button pressed and facilitate the switching of views
+
+ 
+
+
+
+//onKeyDown is used to monitor button pressed and facilitate the switching of views
     @Override
     public boolean onKeyDown(int keycode,KeyEvent event)
     {
@@ -153,7 +160,8 @@ public class MainActivity extends Activity {
    }
 	
 	
-	
+
+    
 
     // Called when shutter is opened
     ShutterCallback shutterCallback = new ShutterCallback() { 
@@ -215,8 +223,8 @@ public class MainActivity extends Activity {
   				setResult(0, mIntent);
   				
   				// RUN SIFT ON THE SAVED PICTURE
-  				  				
-  				Similarity task = new Similarity();
+ 				
+  				Similarity task = new Similarity(mContext);
   				task.execute();
   				
   				//start the camera view again .
@@ -234,10 +242,25 @@ public class MainActivity extends Activity {
 	public class Similarity  extends AsyncTask<String, Integer , Void>
 	{
 		public Mat img;
+		private Context context;
+		private String message;
+		private String title;
+		private ProgressDialog pdialog;
+		
+		public Similarity(Context context){
+			this.context = context;
+			this.title = "Calculating";
+			this.message = "Please Wait...";
+		}
 		
 		/** Before running the sifts, load the image **/
 	    protected void onPreExecute() {
+	    	// Stop running the camera
 	    	mPreview.camera.stopPreview();  
+	    	
+	    	// Load processing dialog
+	    	this.pdialog = ProgressDialog.show(context, title, message);
+	    		    	
 	    	// Read the image 
 	    	img = Highgui.imread(INPUT_IMG_PATH,Highgui.CV_LOAD_IMAGE_COLOR);
 	    	
@@ -245,6 +268,18 @@ public class MainActivity extends Activity {
 				Log.e(TAG, "Did not read image!");
 			} else {
 				//Log.e(TAG, "Image Read!!!!!!!!!!");
+			}
+	    }
+	    
+	    @Override
+	    protected void onPostExecute(Void result) {
+	    	// Dismiss the dialog
+	    	this.pdialog.dismiss();
+	    	
+	    	if(Link != null && !Link.isEmpty()){
+				// Load the website associated with the found book.
+				Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(Link));
+				startActivity(browserIntent);
 			}
 	    }
 		
@@ -262,18 +297,18 @@ public class MainActivity extends Activity {
   			//File file[] = f.listFiles();
   			String bookCovers[] = f.list();      
   			
+  			Log.e(TAG, "Start Runnnig Books Code");
+  			Books allBooks = new Books();
+  			Log.e(TAG, "Start Runnnig Books Code");
+  			
 
   			Log.e(TAG, "Start Runnnig C++ Code");
 			// Run the sifts - NOTE: BECAUSE C USES POINTERS IT FILLS THE RESULTS MATRIX WITH THE CORRECT VALUES WITHOUT RETURNING IT!
-			String Link = NonfreeJNILib.runSift(img.getNativeObjAddr(),results.getNativeObjAddr(),bookCovers);
+			Link = NonfreeJNILib.runSift(img.getNativeObjAddr(),results.getNativeObjAddr(),bookCovers);
 			Log.e(TAG, "Done Runnnig C++ Code");  
 			Log.e(TAG, Link); 
 			
-			if(Link != null && !Link.isEmpty()){
-				// Load the website associated with the found book.
-				Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(Link));
-				startActivity(browserIntent);
-			}
+			
 			 
 			// Set the result image  
 			mResultView.resultImage = null;   
