@@ -56,6 +56,8 @@ public class MainActivity extends Activity {
 	private ProgressDialog dialog;
 	private String Link;
 	
+	private String[] possibleAISN = {"0000000000","0000000000","0000000000","0000000000","0000000000"};
+	
 	
 	private final static String INPUT_IMG_FILENAME = "/Documents/img1.jpg";
 	private final static String INPUT_IMG_PATH = Environment.getExternalStorageDirectory().toString() + INPUT_IMG_FILENAME;
@@ -252,7 +254,7 @@ public class MainActivity extends Activity {
 			this.title = "Calculating";
 			this.message = "Please Wait...";
 		}
-		
+		   
 		/** Before running the sifts, load the image **/
 	    protected void onPreExecute() {
 	    	// Stop running the camera
@@ -291,24 +293,30 @@ public class MainActivity extends Activity {
 			
 			// Get the filenames of all the book covers (in the form isbn.jpg)
   			
-  			String path = Environment.getExternalStorageDirectory().toString()+"/Documents/Books";
-  			//Log.d("Files", "Path: " + path);
-  			File f = new File(path);        
-  			//File file[] = f.listFiles();
-  			String bookCovers[] = f.list();      
+//  			String path = Environment.getExternalStorageDirectory().toString()+"/Documents/Books";
+//  			File f = new File(path);        
+//  			String bookCovers[] = f.list();      
   			
-  			Log.e(TAG, "Start Runnnig Books Code");
-  			Books allBooks = new Books();
-  			Log.e(TAG, "Start Runnnig Books Code");
+			
+			
+  			
+  			
+  			
+  			
   			
 
   			Log.e(TAG, "Start Runnnig C++ Code");
 			// Run the sifts - NOTE: BECAUSE C USES POINTERS IT FILLS THE RESULTS MATRIX WITH THE CORRECT VALUES WITHOUT RETURNING IT!
-			Link = NonfreeJNILib.runSift(img.getNativeObjAddr(),results.getNativeObjAddr(),bookCovers);
+			Link = NonfreeJNILib.runSift(img.getNativeObjAddr(),results.getNativeObjAddr(),possibleAISN);
 			Log.e(TAG, "Done Runnnig C++ Code");  
 			Log.e(TAG, Link); 
 			
 			
+			// Load the book information.
+  			Log.e(TAG, "Start Runnnig Books Code");
+  			Books allBooks = new Books();
+  			Log.e(TAG, "Start Runnnig Books Code");
+  			
 			 
 			// Set the result image  
 			mResultView.resultImage = null;   
@@ -338,7 +346,7 @@ public class MainActivity extends Activity {
 //	  		} catch (IOException e) {
 //	  			Log.e(TAG, "IOException");
 //	  			e.printStackTrace();
-//	  		}   
+//	  		}    
 			
 						
 			//release camera when previous image is processed 

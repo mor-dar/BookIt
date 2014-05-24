@@ -119,13 +119,14 @@ const char* fileNames[] = {
 	"B000PC0S7I", "http://www.amazon.com/gp/reader/B000PC0S7I"
 };
 const char * basePath = "/sdcard/BookIt/Books/";
-void buildDictionary();
 
+// This struct holds a feature descriptor as well as keypoints.
 struct feature {
 	Mat descriptor;  
 	vector<KeyPoint> keypoints;
 	};
 	
+// The matching struct holds all the match information. 
 struct matching {
 	std::vector<int> index;
 	std::vector<int> numMatches;
@@ -135,23 +136,12 @@ struct matching {
 	vector < vector < Point2f > > keypoint_points;
 };
 	
-	
-
 typedef unsigned char uchar;
 
-
+// Define the functions.
 int build_sift_xml();
-std::string find_matches_sift(Mat& image,Mat& results);
 std::string find_matches(Mat& image,Mat& results);
 feature getFeature(Mat image);
-
-
-// OLD FUNCTIONS
-int run_demo();
-int run_sift(Mat& image,Mat& results);
-
-int build_Dictionary();
-int buildDescriptorMat();
 
 extern "C" {
     JNIEXPORT jstring JNICALL Java_com_example_bookit_NonfreeJNILib_runSift(JNIEnv * env, jobject obj, jlong addrInputMat, jlong addrOutputMat);//, jobjectArray fileNameArray);
@@ -167,23 +157,22 @@ JNIEXPORT jstring JNICALL Java_com_example_bookit_NonfreeJNILib_runSift(JNIEnv *
 	// Load the mat from address
 	Mat& inImg = *(Mat*)addrInputMat;
 	Mat& outImg = *(Mat*)addrOutputMat;
-	
-	//LOGI("Start building orbs! \n");
-	//build_sift_xml();
-	//LOGI("Done building orbs! \n");
-
+		
+	// Define the string which holds the link to the best matched book.
 	std::string Link;
+	
+	// Find the matches.
 	LOGI("Start find_matches! \n");
-	//Link = find_matches_sift(inImg,outImg);
 	Link = find_matches(inImg,outImg);
 	LOGI("End find_matches! \n");
 	
+	// Return the link.
 	return env->NewStringUTF(Link.c_str());
 }
 
 
 
-JNIEXPORT jboolean JNICALL Java_com_example_bookit_NonfreeJNILib_BuildDatabase(JNIEnv * env, jobject obj)//, jobjectArray fileNameArray)
+JNIEXPORT jboolean JNICALL Java_com_example_bookit_NonfreeJNILib_BuildDatabase(JNIEnv * env, jobject obj)
 {
 
 
@@ -193,10 +182,6 @@ JNIEXPORT jboolean JNICALL Java_com_example_bookit_NonfreeJNILib_BuildDatabase(J
 
 	return true;
 }
-
-
-
-
 
 std::string find_matches(Mat& image,Mat& results){
 		
@@ -223,8 +208,7 @@ std::string find_matches(Mat& image,Mat& results){
 	std::vector<Point2f> cover_corners(4);
 	std::vector<Point2f> scene_corners(4);
 	std::vector<Point2f> keypoint_points;
-	std::vector<Point2f> cover;
-	std::vector<Point2f> scene;
+
 	
 	std::vector<KeyPoint> goodKeypoints;
 	
@@ -268,7 +252,7 @@ std::string find_matches(Mat& image,Mat& results){
 		allMatches.index.push_back(idx);
 		allMatches.numMatches.push_back(good_matches.size());
 		allMatches.goodKeypoints.push_back(good_matches);
-		
+				
 		(*it)["LINK"] >> FinalLink;
 			
 		// Get the corners of the matched cover.
@@ -280,20 +264,6 @@ std::string find_matches(Mat& image,Mat& results){
 		allMatches.link.push_back(FinalLink);
 		allMatches.corners.push_back(cover_corners);
 		allMatches.keypoint_points.push_back(keypoint_points);
-		
-//		// If this is the best one thus far, update the link, keypoints, and corners
-//		if (good_matches.size() > numGoodMatch)
-//		{
-			
-//			numGoodMatch = good_matches.size();
-//			(*it)["LINK"] >> FinalLink;
-			
-//			// Get the corners of the matched cover.
-//			read((*it)["cover_corners"],cover_corners);
-			
-//			// Get the keypoint points of the match.
-//			(*it)["KeypointPT"] >> keypoint_points;
-//		}
 		
 		// Release the memory
 		desCover.release();
@@ -327,11 +297,9 @@ std::string find_matches(Mat& image,Mat& results){
 	LOGI("Number of Matches over threshold: %d \n", (int) indexAboveThreshold.size());
 
 	
-	// Get the best one (regardless of threshold).
-	
+	// Save the best one (regardless of threshold?).
 	FinalLink = allMatches.link[bestMatchidx];
-	keypoint_points = allMatches.keypoint_points[bestMatchidx];
-	cover_corners = allMatches.corners[bestMatchidx];
+
 	
 	// If the number over the thresholds is greater than one, read in the other possibilities.  
 	if (indexAboveThreshold.size() > 1) {
@@ -347,51 +315,56 @@ std::string find_matches(Mat& image,Mat& results){
 	LOGI("Number of Matches after delete: %d \n", (int) indexAboveThreshold.size());	
 
 		// For each cover with a high number of matches.
-	
-		// Remove the good matches found in better keypoint matches.
-		// NOTE: trainIdx is the index in the scene, queryIdx is the index of the keypoint in the cover.
-		// So we remove the matching queryIdx. 
-	
+		//for (int i = 0; i < indexAboveThreshold.size(); i++) {
+				
+			// Remove the good matches found in better keypoint matches.
+			// NOTE: trainIdx is the index in the scene, queryIdx is the index of the keypoint in the cover.
+			// So we remove the matching queryIdx. 
+			
+		
+		//}
 		// If there are still > threshold number of good matches left, save this cover as an option.
 		
 		
 	}
 
+	// -- Use homography to outline the book -- //
+	std::vector<Point2f> cover;
+	std::vector<Point2f> scene;
 	
-	
-	
-	
-	//-- Localize the book cover --//
+	// Use the good keypoint matches for the best matched book.
+	keypoint_points = allMatches.keypoint_points[bestMatchidx];
 
-//    //-- Get the point locations of the keypoints from good matches	--//
-//	for( int i = 0; i < good_matches.size(); i++ )
-//	{
-//    cover.push_back( keypoint_points[ good_matches[i].queryIdx ]);
-//    scene.push_back( sceneFeatures.keypoints[ good_matches[i].trainIdx ].pt ); // the scene
+	
+    // -- pull out the good matched keypoints for the cover and scene --//
+	for( int i = 0; i < allMatches.goodKeypoints[bestMatchidx].size(); i++)//good_matches.size(); i++ )
+	{
+    cover.push_back( keypoint_points[ allMatches.goodKeypoints[bestMatchidx][i].queryIdx ]);//keypoint_points[ good_matches[i].queryIdx ]);
+    scene.push_back( sceneFeatures.keypoints[allMatches.goodKeypoints[bestMatchidx][i].trainIdx ].pt ); //sceneFeatures.keypoints[ good_matches[i].trainIdx ].pt ); // the scene
 	
 //	goodKeypoints.push_back(sceneFeatures.keypoints[ good_matches[i].trainIdx ]);
-//	}
+	}
 	
 	// Show keypoints in the result image image.
 //	 Scalar keypointColor = Scalar(255, 0, 0);
 //	 drawKeypoints(image, goodKeypoints, results, keypointColor, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 	
 	// Copy the image to the results.
-	results = image;
+	results = image;	
 	
-	//-- Compute Homography using RANSAC --//
-//	Mat H = findHomography( cover, scene, CV_RANSAC );
+	//-- Compute Homography using the matching keypoints and RANSAC --//
+	Mat H = findHomography( cover, scene, CV_RANSAC );
 	
-	
-//	perspectiveTransform( cover_corners, scene_corners, H);
+	// Transform the original cover to the scene and then use its corners to define lines which border the location of the actual book.
+	cover_corners = allMatches.corners[bestMatchidx];
+	perspectiveTransform( cover_corners, scene_corners, H);
 
   //-- Draw lines between the corners (the mapped object in the scene - image_2 ) --//  
-//	line( results, scene_corners[0], scene_corners[1], Scalar(0, 255, 0), 4 );
-//	line( results, scene_corners[1], scene_corners[2], Scalar( 0, 255, 0), 4 );
-//	line( results, scene_corners[2], scene_corners[3], Scalar( 0, 255, 0), 4 );
-//	line( results, scene_corners[3], scene_corners[0], Scalar( 0, 255, 0), 4 );
+	line( results, scene_corners[0], scene_corners[1], Scalar(0, 255, 0), 4 );
+	line( results, scene_corners[1], scene_corners[2], Scalar( 0, 255, 0), 4 );
+	line( results, scene_corners[2], scene_corners[3], Scalar( 0, 255, 0), 4 );
+	line( results, scene_corners[3], scene_corners[0], Scalar( 0, 255, 0), 4 );
 
-	
 	// Convert the image to rgb instead of bgr
 	cv::cvtColor(results, results, CV_BGR2RGB);
 		
@@ -463,6 +436,7 @@ feature getFeature(Mat image){
 	// This function calculates the feature using some Detector and Extractor.  
 	// It is done this way for easy swapping of descriptor/extractors.
 
+	// The feature structure.
 	feature features;
 	
 	// the maximum number of features to extract.
@@ -476,7 +450,7 @@ feature getFeature(Mat image){
 	
 	// If the descriptor is not the correct format, convert it.
 	if(features.descriptor.type()!=CV_32F) {
-    features.descriptor.convertTo(features.descriptor, CV_32F);
+		features.descriptor.convertTo(features.descriptor, CV_32F);
 	}
 	
 	return features;
