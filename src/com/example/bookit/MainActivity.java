@@ -167,7 +167,11 @@ public class MainActivity extends Activity {
 		}
 	};
 
-	// store the image as a jpeg image
+	public boolean compressByteImageHighQuality(Context mContext, byte[] imageData)
+	{
+		return compressByteImage(mContext, imageData, 100);
+	}
+	
 	public boolean compressByteImage(Context mContext, byte[] imageData,
 			int quality) {
 		File sdCard = Environment.getExternalStorageDirectory();
@@ -212,7 +216,7 @@ public class MainActivity extends Activity {
 
 				Intent mIntent = new Intent();
 				// compress image
-				compressByteImage(mContext, imageData, 75);
+				compressByteImageHighQuality(mContext, imageData);
 				setResult(0, mIntent);
 
 				// RUN SIFT ON THE SAVED PICTURE
