@@ -92,30 +92,32 @@ public class MainActivity extends Activity
 	public void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
+		configureScreen();
+		configurePreviews();
+		loadOpenCV();
+	}
 
-		// make the screen full screen
-		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-				WindowManager.LayoutParams.FLAG_FULLSCREEN);
-		// remove the title bar
-		requestWindowFeature(Window.FEATURE_NO_TITLE);
-
-		mResultView = new ResultView(this);
-		mPreview = new Preview(this);
-
-		// set Content View as the preview
-		setContentView(mPreview);
-
-		// add result view to the content View
-		addContentView(mResultView, new LayoutParams(LayoutParams.WRAP_CONTENT,
-				LayoutParams.WRAP_CONTENT));
-
-		// set the orientation as landscape
-		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-
-		// Load opencv
+	private void loadOpenCV()
+	{
 		OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_2_4_8, this,
 				mLoaderCallback);
+	}
 
+	private void configurePreviews()
+	{
+		mResultView = new ResultView(this);
+		mPreview = new Preview(this);
+		setContentView(mPreview);
+		addContentView(mResultView, new LayoutParams(LayoutParams.WRAP_CONTENT,
+				LayoutParams.WRAP_CONTENT));
+	}
+
+	private void configureScreen()
+	{
+		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+				WindowManager.LayoutParams.FLAG_FULLSCREEN);
+		requestWindowFeature(Window.FEATURE_NO_TITLE);
+		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 	}
 
 	// onKeyDown is used to monitor button pressed and facilitate the switching
@@ -124,9 +126,11 @@ public class MainActivity extends Activity
 	public boolean onKeyDown(int keycode, KeyEvent event)
 	{
 		// check if the camera button is pressed
-		if (keycode == KeyEvent.KEYCODE_CAMERA) {
+		if (keycode == KeyEvent.KEYCODE_CAMERA)
+		{
 			// if result
-			if (mResultView.IsShowingResult) {
+			if (mResultView.IsShowingResult)
+			{
 				mResultView.IsShowingResult = false;
 			} else if (mCameraReadyFlag == true)// switch to camera view
 			{
@@ -145,10 +149,12 @@ public class MainActivity extends Activity
 	 * screen, run sift
 	 **/
 	{
-		if (event.getAction() == MotionEvent.ACTION_DOWN) { // finger touches
-															// the screen
+		if (event.getAction() == MotionEvent.ACTION_DOWN)
+		{ // finger touches
+			// the screen
 			// if result
-			if (mResultView.IsShowingResult) {
+			if (mResultView.IsShowingResult)
+			{
 				mResultView.IsShowingResult = false;
 				mPreview.camera.startPreview();
 			} else if (mCameraReadyFlag == true)// switch to camera view
@@ -179,30 +185,26 @@ public class MainActivity extends Activity
 		}
 	};
 
-	public boolean compressByteImageHighQuality(Context mContext,
-			byte[] imageData)
+	public boolean compressByteImageHighQuality(Context mContext, byte[] imageData)
 	{
 		return compressByteImage(mContext, imageData, 100);
 	}
 
-	public boolean compressByteImage(Context mContext, byte[] imageData,
-			int quality)
+	public boolean compressByteImage(Context mContext, byte[] imageData, int quality)
 	{
 		File sdCard = Environment.getExternalStorageDirectory();
 		FileOutputStream fileOutputStream = null;
 
-		try {
+		try
+		{
 			BitmapFactory.Options options = new BitmapFactory.Options();
 			options.inSampleSize = 1; // DOWNSAMPLE THE IMAGE SO IT WRITES
 										// FASTER
-			Bitmap myImage = BitmapFactory.decodeByteArray(imageData, 0,
-					imageData.length, options);
-			fileOutputStream = new FileOutputStream(sdCard.toString()
-					+ INPUT_IMG_FILENAME);
+			Bitmap myImage = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
+			fileOutputStream = new FileOutputStream(sdCard.toString() + INPUT_IMG_FILENAME);
 
 			Log.e(TAG, sdCard.toString() + INPUT_IMG_FILENAME);
-			BufferedOutputStream bos = new BufferedOutputStream(
-					fileOutputStream);
+			BufferedOutputStream bos = new BufferedOutputStream(fileOutputStream);
 
 			// compress image to jpeg
 			myImage.compress(CompressFormat.JPEG, quality, bos);
@@ -211,10 +213,12 @@ public class MainActivity extends Activity
 			bos.close();
 			fileOutputStream.close();
 
-		} catch (FileNotFoundException e) {
+		} catch (FileNotFoundException e)
+		{
 			Log.e(TAG, "FileNotFoundException");
 			e.printStackTrace();
-		} catch (IOException e) {
+		} catch (IOException e)
+		{
 			Log.e(TAG, "IOException");
 			e.printStackTrace();
 		}
@@ -228,8 +232,8 @@ public class MainActivity extends Activity
 		public void onPictureTaken(byte[] imageData,
 				android.hardware.Camera camera)
 		{
-			if (imageData != null) {
-
+			if (imageData != null)
+			{
 				Intent mIntent = new Intent();
 				compressByteImageHighQuality(mContext, imageData);
 				setResult(0, mIntent);
@@ -272,9 +276,11 @@ public class MainActivity extends Activity
 			// Read the image
 			img = Highgui.imread(INPUT_IMG_PATH, Highgui.CV_LOAD_IMAGE_COLOR);
 
-			if (img.empty()) {
+			if (img.empty())
+			{
 				Log.e(TAG, "Did not read image!");
-			} else {
+			} else
+			{
 				// Log.e(TAG, "Image Read!!!!!!!!!!");
 			}
 		}
@@ -285,7 +291,8 @@ public class MainActivity extends Activity
 			// Dismiss the dialog
 			this.pdialog.dismiss();
 
-			if (Link != null && !Link.isEmpty()) {
+			if (Link != null && !Link.isEmpty())
+			{
 				// Load the website associated with the found book.
 				Intent browserIntent = new Intent(Intent.ACTION_VIEW,
 						Uri.parse(Link));
@@ -323,12 +330,14 @@ public class MainActivity extends Activity
 
 			// Set the result image
 			mResultView.resultImage = null;
-			try {
+			try
+			{
 				mResultView.resultImage = Bitmap.createBitmap(results.cols(),
 						results.rows(), Bitmap.Config.ARGB_8888);
 				Utils.matToBitmap(results, mResultView.resultImage);
 				mResultView.IsShowingResult = true;
-			} catch (CvException e) {
+			} catch (CvException e)
+			{
 				Log.d("Exception", e.getMessage());
 			}
 
