@@ -43,7 +43,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity
+{
 
 	private static final String TAG = "BookIt";
 
@@ -54,8 +55,8 @@ public class MainActivity extends Activity {
 	private ProgressDialog dialog;
 	private String Link;
 
-	private String[] possibleAISN = { "0000000000", "0000000000", "0000000000",
-			"0000000000", "0000000000" };
+	private String[] possibleAISN =
+	{ "0000000000", "0000000000", "0000000000", "0000000000", "0000000000" };
 
 	private final static String INPUT_IMG_FILENAME = "/Documents/img1.jpg";
 	private final static String INPUT_IMG_PATH = Environment
@@ -64,16 +65,21 @@ public class MainActivity extends Activity {
 	// flag to check if camera is ready for capture
 	private boolean mCameraReadyFlag = true;
 
-	private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
+	private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this)
+	{
 		@Override
-		public void onManagerConnected(int status) {
-			switch (status) {
-			case LoaderCallbackInterface.SUCCESS: {
+		public void onManagerConnected(int status)
+		{
+			switch (status)
+			{
+			case LoaderCallbackInterface.SUCCESS:
+			{
 				Log.i(TAG, "OpenCV loaded successfully");
 				// mOpenCvCameraView.enableView();
 			}
 				break;
-			default: {
+			default:
+			{
 				super.onManagerConnected(status);
 			}
 				break;
@@ -83,7 +89,8 @@ public class MainActivity extends Activity {
 
 	// Called when the activity is first created.
 	@Override
-	public void onCreate(Bundle savedInstanceState) {
+	public void onCreate(Bundle savedInstanceState)
+	{
 		super.onCreate(savedInstanceState);
 
 		// make the screen full screen
@@ -114,7 +121,8 @@ public class MainActivity extends Activity {
 	// onKeyDown is used to monitor button pressed and facilitate the switching
 	// of views
 	@Override
-	public boolean onKeyDown(int keycode, KeyEvent event) {
+	public boolean onKeyDown(int keycode, KeyEvent event)
+	{
 		// check if the camera button is pressed
 		if (keycode == KeyEvent.KEYCODE_CAMERA) {
 			// if result
@@ -155,25 +163,31 @@ public class MainActivity extends Activity {
 	}
 
 	// Called when shutter is opened
-	ShutterCallback shutterCallback = new ShutterCallback() {
-		public void onShutter() {
+	ShutterCallback shutterCallback = new ShutterCallback()
+	{
+		public void onShutter()
+		{
 		}
 	};
 
 	// Handles data for raw picture
-	PictureCallback rawCallback = new PictureCallback() {
+	PictureCallback rawCallback = new PictureCallback()
+	{
 		@Override
-		public void onPictureTaken(byte[] arg0, android.hardware.Camera arg1) {
+		public void onPictureTaken(byte[] arg0, android.hardware.Camera arg1)
+		{
 		}
 	};
 
-	public boolean compressByteImageHighQuality(Context mContext, byte[] imageData)
+	public boolean compressByteImageHighQuality(Context mContext,
+			byte[] imageData)
 	{
 		return compressByteImage(mContext, imageData, 100);
 	}
-	
+
 	public boolean compressByteImage(Context mContext, byte[] imageData,
-			int quality) {
+			int quality)
+	{
 		File sdCard = Environment.getExternalStorageDirectory();
 		FileOutputStream fileOutputStream = null;
 
@@ -208,25 +222,21 @@ public class MainActivity extends Activity {
 	}
 
 	// Handles data for jpeg picture
-	PictureCallback jpegCallback = new PictureCallback() {
+	PictureCallback jpegCallback = new PictureCallback()
+	{
 		@Override
 		public void onPictureTaken(byte[] imageData,
-				android.hardware.Camera camera) {
+				android.hardware.Camera camera)
+		{
 			if (imageData != null) {
 
 				Intent mIntent = new Intent();
-				// compress image
 				compressByteImageHighQuality(mContext, imageData);
 				setResult(0, mIntent);
 
 				// RUN SIFT ON THE SAVED PICTURE
-
 				Similarity task = new Similarity(mContext);
 				task.execute();
-
-				// start the camera view again .
-
-				// camera.startPreview();
 			}
 		}
 	};
@@ -235,21 +245,24 @@ public class MainActivity extends Activity {
 	// Get the similarity of the image
 	// *******************************************************************************
 
-	public class Similarity extends AsyncTask<String, Integer, Void> {
+	public class Similarity extends AsyncTask<String, Integer, Void>
+	{
 		public Mat img;
 		private Context context;
 		private String message;
 		private String title;
 		private ProgressDialog pdialog;
 
-		public Similarity(Context context) {
+		public Similarity(Context context)
+		{
 			this.context = context;
 			this.title = "Calculating";
 			this.message = "Please Wait...";
 		}
 
 		/** Before running the sifts, load the image **/
-		protected void onPreExecute() {
+		protected void onPreExecute()
+		{
 			// Stop running the camera
 			mPreview.camera.stopPreview();
 
@@ -267,7 +280,8 @@ public class MainActivity extends Activity {
 		}
 
 		@Override
-		protected void onPostExecute(Void result) {
+		protected void onPostExecute(Void result)
+		{
 			// Dismiss the dialog
 			this.pdialog.dismiss();
 
@@ -280,7 +294,8 @@ public class MainActivity extends Activity {
 		}
 
 		@Override
-		protected Void doInBackground(String... params) {
+		protected Void doInBackground(String... params)
+		{
 
 			// Copy the image to build the output on.
 			Mat results = new Mat(img.height(), img.width(), CvType.CV_8U,
@@ -348,7 +363,8 @@ public class MainActivity extends Activity {
 	}
 
 	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
+	public boolean onCreateOptionsMenu(Menu menu)
+	{
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.main, menu);
 		return true;
