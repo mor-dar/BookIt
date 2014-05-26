@@ -1,6 +1,6 @@
 #include <jni.h>
 #include <android/log.h>
-
+#include <sstream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/nonfree/features2d.hpp>
@@ -202,6 +202,9 @@ std::string find_matches(Mat& image,Mat& results){
 	std::string FinalLink; // The link which will be returned.
 	int numGoodMatch = 0;
 		
+	// for output.
+	std::ostringstream outputStringStream;
+		
 	// For homography
 	std::vector<Point2f> cover_corners(4);
 	std::vector<Point2f> scene_corners(4);
@@ -398,20 +401,37 @@ std::string find_matches(Mat& image,Mat& results){
 		line( results, scene_corners[2], scene_corners[3], Scalar( 0, 255, 0), 4 );
 		line( results, scene_corners[3], scene_corners[0], Scalar( 0, 255, 0), 4 );
 		
+
+		
+		
 		// For the return value.
 		if (chosenIdx + 1 == indexCoversChosen.size()){
 			// If this is the last link added, do not add separator.	
-			concatLinks = concatLinks + allMatches.link[indexCoversChosen[chosenIdx]];
+			outputStringStream << allMatches.link[indexCoversChosen[chosenIdx]];
+			// Add the four corners of the book to the output.
+			outputStringStream << '|' << scene_corners[0].x << '|' << scene_corners[0].y;
+			outputStringStream << '|' << scene_corners[1].x << '|' << scene_corners[1].y;
+			outputStringStream << '|' << scene_corners[2].x << '|' << scene_corners[2].y;
+			outputStringStream << '|' << scene_corners[3].x << '|' << scene_corners[3].y << '|';
+			
+			//concatLinks = concatLinks + allMatches.link[indexCoversChosen[chosenIdx]];
 		
 		} else {
-			concatLinks = concatLinks + allMatches.link[indexCoversChosen[chosenIdx]] + '|';
+			outputStringStream << allMatches.link[indexCoversChosen[chosenIdx]];
+			
+			outputStringStream << '|' << scene_corners[0].x << '|' << scene_corners[0].y;
+			outputStringStream << '|' << scene_corners[1].x << '|' << scene_corners[1].y;
+			outputStringStream << '|' << scene_corners[2].x << '|' << scene_corners[2].y;
+			outputStringStream << '|' << scene_corners[3].x << '|' << scene_corners[3].y << '|';
+			
 		}
 		
 	}
 
 	// Convert the image to rgb instead of bgr
 	cv::cvtColor(results, results, CV_BGR2RGB);
-		
+	
+	concatLinks = outputStringStream.str();
 	//return FinalLink;
 	return concatLinks;
 }
