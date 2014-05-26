@@ -156,13 +156,15 @@ public class MainActivity extends Activity
 			if (mResultView.IsShowingResult)
 			{
 				mResultView.IsShowingResult = false;
-				mPreview.camera.startPreview();
+				setContentView(mPreview);
+				//mPreview.camera.startPreview();
 			} else if (mCameraReadyFlag == true)// switch to camera view
 			{
 				mCameraReadyFlag = false;
 				mPreview.camera.takePicture(shutterCallback, rawCallback,
 						jpegCallback);
-
+				
+				
 			}
 		}
 		return true;
@@ -198,7 +200,7 @@ public class MainActivity extends Activity
 		try
 		{
 			BitmapFactory.Options options = new BitmapFactory.Options();
-			options.inSampleSize = 1; // DOWNSAMPLE THE IMAGE SO IT WRITES
+			options.inSampleSize = 4; // DOWNSAMPLE THE IMAGE SO IT WRITES
 										// FASTER
 			Bitmap myImage = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
 			fileOutputStream = new FileOutputStream(sdCard.toString() + INPUT_IMG_FILENAME);
@@ -297,6 +299,8 @@ public class MainActivity extends Activity
 				Intent browserIntent = new Intent(Intent.ACTION_VIEW,
 						Uri.parse(Link));
 				startActivity(browserIntent);
+				setContentView(mResultView);
+
 			}
 		}
 
