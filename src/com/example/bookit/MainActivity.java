@@ -45,7 +45,7 @@ import android.view.WindowManager;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
+
 
 public class MainActivity extends Activity
 {
@@ -56,7 +56,7 @@ public class MainActivity extends Activity
 	ResultView mResultView;
 	private Context mContext = this;
 
-	private ProgressDialog dialog;
+	//private ProgressDialog dialog;
 	
 	// the results of the c++ function.
 	private String foundBooksString;
@@ -203,21 +203,19 @@ public class MainActivity extends Activity
 					foundBooks.clear();  
 				}
 				
-				//mPreview.camera.startPreview();
-			} else if (mCameraReadyFlag == true)// switch to camera view
+			} else if (mCameraReadyFlag == true)// If the camera is ready, take a picture.
 			{
 				mCameraReadyFlag = false;
 				mPreview.camera.takePicture(shutterCallback, rawCallback,
 						jpegCallback);
-				
-				
 			}
 		} 
 		return true;
 	}
 
 	/**
-	 * This method looks to see if the x and y are in the book given.
+	 * This method looks to see if the x and y coordinates the user touched 
+	 * are in the book given.
 	 * @param touchedX
 	 * @param touchedY
 	 * @param book
@@ -257,6 +255,19 @@ public class MainActivity extends Activity
 		
 		return false;
 	}
+	
+	/**
+	 * This method calculates the area of the triange defined by the x,y 
+	 * coordinates given.
+	 * 
+	 * @param x1
+	 * @param y1
+	 * @param x2
+	 * @param y2
+	 * @param x3
+	 * @param y3
+	 * @return
+	 */
 	private float triangleArea(float x1, float y1, float x2, float y2, float x3, float y3){
 		float area;
 		
@@ -381,10 +392,7 @@ public class MainActivity extends Activity
 			if (img.empty())
 			{
 				Log.e(TAG, "Did not read image!");
-			} else
-			{
-				// Log.e(TAG, "Image Read!!!!!!!!!!");
-			}
+			} 
 		}
 
 		@Override
@@ -392,16 +400,17 @@ public class MainActivity extends Activity
 		{
 			// Dismiss the dialog
 			this.pdialog.dismiss();
-
+			
+			// If something was returned from the c++
 			if (foundBooksString != null && !foundBooksString.isEmpty())
 			{
 				
 				// Parse the string returned (note: we use '|' as a delimiter for information).
-				
 				String delimiter = "\\|";
 				String[] temp;
 				temp = foundBooksString.split(delimiter);
 				
+				// For each book found, save the url and corners in the image.
 				String link = "";
 				ArrayList<Float>  cornersX; 
 				ArrayList<Float>  cornersY;
@@ -409,19 +418,23 @@ public class MainActivity extends Activity
 				for (int i = 0; i < temp.length; i = i + 9){
 					// the first element is the link. 
 					link = temp[i];
+					
 					cornersX = new ArrayList<Float>();
 					cornersY = new ArrayList<Float>();
 					
-					
+					// Save the x corners.
 					cornersX.add(Float.parseFloat(temp[i+1]));
 					cornersX.add(Float.parseFloat(temp[i+3]));
 					cornersX.add(Float.parseFloat(temp[i+5]));
 					cornersX.add(Float.parseFloat(temp[i+7]));
 					
+					// Save the y corners.
 					cornersY.add(Float.parseFloat(temp[i+2]));
 					cornersY.add(Float.parseFloat(temp[i+4]));
 					cornersY.add(Float.parseFloat(temp[i+6]));
 					cornersY.add(Float.parseFloat(temp[i+8]));
+					
+					// Add the book.
 					tempBook = new Book(link,cornersX,cornersY);
 					foundBooks.add(tempBook);
 				}
@@ -435,8 +448,8 @@ public class MainActivity extends Activity
 					startActivity(browserIntent); 
 				}
 				
+				// Switch to the result view 
 				setContentView(mResultView);
-
 			}
 		}
 
@@ -448,25 +461,13 @@ public class MainActivity extends Activity
 			Mat results = new Mat(img.height(), img.width(), CvType.CV_8U,
 					new Scalar(4));
 
-			// Get the filenames of all the book covers (in the form isbn.jpg)
-
-			// String path =
-			// Environment.getExternalStorageDirectory().toString()+"/Documents/Books";
-			// File f = new File(path);
-			// String bookCovers[] = f.list();
-
-			Log.e(TAG, "Start Runnnig C++ Code");
+			Log.d(TAG, "Start Runnnig C++ Code");
 			// Run the sifts - NOTE: BECAUSE C USES POINTERS IT FILLS THE
 			// RESULTS MATRIX WITH THE CORRECT VALUES WITHOUT RETURNING IT!
 			foundBooksString = NonfreeJNILib.runSift(img.getNativeObjAddr(),
 					results.getNativeObjAddr());
-			Log.e(TAG, "Done Runnnig C++ Code");
-			Log.e(TAG, foundBooksString);
+			Log.d(TAG, "Done Runnnig C++ Code");
 
-			// Load the book information.
-			Log.e(TAG, "Start Runnnig Books Code");
-			Books allBooks = new Books();
-			Log.e(TAG, "Start Runnnig Books Code");
 
 			// Set the result image
 			mResultView.resultImage = null;
@@ -478,31 +479,8 @@ public class MainActivity extends Activity
 				mResultView.IsShowingResult = true;
 			} catch (CvException e)
 			{
-				Log.d("Exception", e.getMessage());
+				Log.e("Exception", e.getMessage());
 			}
-
-			// ///////////////////TEMP//////////////////TEMP///////////////////////////
-			// try {
-			//
-			// FileOutputStream fileOutputStream = new
-			// FileOutputStream("/sdcard/Documents/img1_result.jpg");
-			// BufferedOutputStream bos = new
-			// BufferedOutputStream(fileOutputStream);
-			//
-			// //compress image to jpeg
-			// mResultView.resultImage.compress(CompressFormat.JPEG, 100, bos);
-			//
-			// bos.flush();
-			// bos.close();
-			// fileOutputStream.close();
-			//
-			// } catch (FileNotFoundException e) {
-			// Log.e(TAG, "FileNotFoundException");
-			// e.printStackTrace();
-			// } catch (IOException e) {
-			// Log.e(TAG, "IOException");
-			// e.printStackTrace();
-			// }
 
 			// release camera when previous image is processed
 			mCameraReadyFlag = true;

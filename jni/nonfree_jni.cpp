@@ -219,6 +219,9 @@ std::string find_matches(Mat& image,Mat& results){
 	int bestMatchidx; // The index of the best match.
 	int mostMatches = 0; // The number of matches of the best match.
 	
+	int fewestMatches = 2000;
+	double mean = 0;
+	
 	
 	int idx = 0;
 	// Iterate over the different covers (and their corresponding descriptors, links, keypoints, etc.).
@@ -270,6 +273,12 @@ std::string find_matches(Mat& image,Mat& results){
 			bestMatchidx = idx;
 		}
 		
+		if (good_matches.size() < fewestMatches){
+			fewestMatches = good_matches.size();
+		}
+		
+		mean = mean + good_matches.size();
+		
 		//LOGI("index: %d \n", (int) idx);
 		//LOGI("numMatches %d \n", (int) good_matches.size());
 		
@@ -281,8 +290,21 @@ std::string find_matches(Mat& image,Mat& results){
 	}
 	fsCovers.release();
 	
+	mean = mean/101;
+
 	
-// ############### Now that we have all the relevant information, start by finding the best book matches while simultaneously checking that there is at least one set of matches over the threshold.
+	
+		
+	// calculate the variance
+	double variance = 0;
+	for (int i = 0; i < allMatches.numMatches.size(); i++){
+		variance = variance + (((allMatches.numMatches[i] - mean) * (allMatches.numMatches[i] - mean)) /101);
+	}
+	
+	double stDev = sqrt(variance);
+	LOGI("mean %d", (int) mean);
+	LOGI("variance %d", (int) variance);
+	LOGI("standard dev %d", (int) stDev);
 	
 	
 	vector < int > indexAboveThreshold;
@@ -290,7 +312,7 @@ std::string find_matches(Mat& image,Mat& results){
 	
 	// As the number of matches is dependent on camera information, we set a threshold based upon the 
 	// maximum number of matches found.
-	int threshold = 0.7 * mostMatches; 
+	int threshold = mean;//0.6 * mostMatches; 
 	
 	// Get all the matches which have more than threshold matches.
 	for ( int i = 0; i < allMatches.index.size(); i++){
