@@ -190,16 +190,14 @@ std::string find_matches(Mat& image,Mat& results){
 	sceneFeatures = getFeature(image);
 	LOGI("Detected %d keypoints\n", (int) sceneFeatures.keypoints.size());
 
-	LOGI("Start Reading the file\n");
+	LOGI("Start Reading the database\n");
 	// We now look for a match between the scene and the different sifts calculated.
     FileStorage fsCovers("/sdcard/BookIt/database.xml", FileStorage::READ);
 	LOGI("Done Reading the database");
 	
-	
-	// Initialize the matcher
-	vector< vector<DMatch> > matches;
+	// -- Initialize the variables --//
+	vector< vector<DMatch> > matches; // The knn matches are stored here.
 	Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("FlannBased");
-
 	std::vector< DMatch > good_matches; // The vector which stores good matches.
 	std::string FinalLink; // The link which will be returned.
 	int numGoodMatch = 0;
@@ -208,19 +206,18 @@ std::string find_matches(Mat& image,Mat& results){
 	std::vector<Point2f> cover_corners(4);
 	std::vector<Point2f> scene_corners(4);
 	std::vector<Point2f> keypoint_points;
-
-	
-	std::vector<KeyPoint> goodKeypoints;
-	
-	matching allMatches;
-	
-	
+	std::vector<KeyPoint> goodKeypoints;	
+	matching allMatches;	
 	
 	// Load the File Node
 	FileNode coverDescriptors = fsCovers["descriptors"];
 	FileNodeIterator it = coverDescriptors.begin(), it_end = coverDescriptors.end();
-	int idx = 0;
 	
+	int bestMatchidx; // The index of the best match.
+	int mostMatches = 0; // The number of matches of the best match.
+	
+	
+	int idx = 0;
 	// Iterate over the different covers (and their corresponding descriptors, links, keypoints, etc.).
 	for( ; it != it_end; ++it, idx++ )
 	{
@@ -234,7 +231,6 @@ std::string find_matches(Mat& image,Mat& results){
 		// Get the descriptor from this book cover.
 		(*it)["Descriptor"] >> desCover;
 		// Calculate the matches using the flann based matcher.
-		// matchCovers.match(desCover, sceneFeatures.descriptor, matches );
 		 matcher->knnMatch( desCover, sceneFeatures.descriptor, matches, 2 );
 
 		// Calculate the best matches using Lowe's ratio
@@ -246,24 +242,36 @@ std::string find_matches(Mat& image,Mat& results){
 				good_matches.push_back(matches[i][0]);
 			}
 		}
-
 		
 		// Add the good matches information as well as the index to the matching vector
 		allMatches.index.push_back(idx);
 		allMatches.numMatches.push_back(good_matches.size());
 		allMatches.goodKeypoints.push_back(good_matches);
-				
-		(*it)["LINK"] >> FinalLink;
-			
-		// Get the corners of the matched cover.
-		read((*it)["cover_corners"],cover_corners);
-			
-		// Get the keypoint points of the match.
-		(*it)["KeypointPT"] >> keypoint_points;
 		
+		// Get the link and save it to allMatches.
+		(*it)["LINK"] >> FinalLink;
 		allMatches.link.push_back(FinalLink);
+		
+		// Get the corners of the matched cover and save it to allMatches.
+		read((*it)["cover_corners"],cover_corners);
 		allMatches.corners.push_back(cover_corners);
+		
+		// Get the keypoint points of the match and save them to allMatches.
+		(*it)["KeypointPT"] >> keypoint_points;
 		allMatches.keypoint_points.push_back(keypoint_points);
+		
+		// If this cover has more good matches than any of the others so far
+		// update the index as the best.
+		if (good_matches.size() > mostMatches) {
+			mostMatches = good_matches.size();
+			bestMatchidx = idx;
+		}
+		
+		//LOGI("index: %d \n", (int) idx);
+		//LOGI("numMatches %d \n", (int) good_matches.size());
+		
+		
+		
 		
 		// Release the memory
 		desCover.release();
@@ -275,18 +283,15 @@ std::string find_matches(Mat& image,Mat& results){
 	
 	
 	vector < int > indexAboveThreshold;
+	vector < int > indexCoversChosen;
 	
-	int threshold = 100; // This is the minimal number of matches.
+	// As the number of matches is dependent on camera information, we set a threshold based upon the 
+	// maximum number of matches found.
+	int threshold = 0.7 * mostMatches; 
 	
-	int bestMatchidx;
-	int mostMatches = 0;
-	// Get the one with the maximum number of matches.
+	// Get all the matches which have more than threshold matches.
 	for ( int i = 0; i < allMatches.index.size(); i++){
-		if (allMatches.numMatches[i] > mostMatches) {
-			mostMatches = allMatches.numMatches[i];
-			bestMatchidx = allMatches.index[i];
-		}
-		
+	
 		// Note which indices have more than the threshold number of matches.
 		if (allMatches.numMatches[i] > threshold) {
 			indexAboveThreshold.push_back(allMatches.index[i]);
@@ -296,80 +301,119 @@ std::string find_matches(Mat& image,Mat& results){
 	LOGI("The Best Match: %d matches.\n", (int) mostMatches);
 	LOGI("Number of Matches over threshold: %d \n", (int) indexAboveThreshold.size());
 
-	
 	// Save the best one (regardless of threshold?).
 	FinalLink = allMatches.link[bestMatchidx];
-
+	
+	// The first book chosen is the one with the best matches.
+	indexCoversChosen.push_back(bestMatchidx);
+	LOGI("Threshold %d \n", (int) threshold);
+	LOGI("Index %d \n", (int) bestMatchidx);
 	
 	// If the number over the thresholds is greater than one, read in the other possibilities.  
 	if (indexAboveThreshold.size() > 1) {
-	
+				
 		// Remove the best match from the list (as it is already added).	
 		for (int i = 0; i < indexAboveThreshold.size(); i++) {
 			if (indexAboveThreshold[i] == bestMatchidx) {
 				indexAboveThreshold.erase(indexAboveThreshold.begin() + i);
 			}
-
 		}
 
-	LOGI("Number of Matches after delete: %d \n", (int) indexAboveThreshold.size());	
-
+		int indexInChosenCover;
+		int indexInTestCover;
+		
 		// For each cover with a high number of matches.
-		//for (int i = 0; i < indexAboveThreshold.size(); i++) {
+		for (int i = 0; i < indexAboveThreshold.size(); i++) {
 				
 			// Remove the good matches found in better keypoint matches.
 			// NOTE: trainIdx is the index in the scene, queryIdx is the index of the keypoint in the cover.
-			// So we remove the matching queryIdx. 
 			
-		
-		//}
-		// If there are still > threshold number of good matches left, save this cover as an option.
-		
-		
+			// for each book already chosen
+			for (int chosen = 0; chosen < indexCoversChosen.size(); chosen++){
+				
+				// for each keypoint in the chosen book
+				for (int keyChosen = 0; keyChosen < allMatches.goodKeypoints[indexCoversChosen[chosen]].size(); keyChosen++){
+					
+					// Get the index of the keypoint of a book already chosen in the scene.
+					indexInChosenCover = allMatches.goodKeypoints[indexCoversChosen[chosen]][keyChosen].trainIdx;
+					
+					for (int keyAboveThresh = 0; keyAboveThresh < allMatches.goodKeypoints[indexAboveThreshold[i]].size(); keyAboveThresh++){
+						
+						// Get the index of the keypoint to test in the scene.
+						indexInTestCover = allMatches.goodKeypoints[indexAboveThreshold[i]][keyAboveThresh].trainIdx;
+
+						// If this match is one which equals one which was already matched, remove it.
+						if (indexInChosenCover == indexInTestCover){
+							// Note, we don't actually need to erase the keypoints, just decrease the number of good matches.
+							allMatches.numMatches[indexAboveThreshold[i]]--;
+						
+						}
+					}	
+				}
+			}
+			
+			// If the number of matches left over is still more than threshold, add the book to the list of chosen books.
+			if (allMatches.numMatches[indexAboveThreshold[i]] >= threshold){
+				
+				indexCoversChosen.push_back(indexAboveThreshold[i]);
+			}
+		}
 	}
 
-	// -- Use homography to outline the book -- //
+	LOGI("Detected %d books\n", (int) indexCoversChosen.size());
+	
+	// -- Use homography to outline the books -- //
 	std::vector<Point2f> cover;
 	std::vector<Point2f> scene;
-	
-	// Use the good keypoint matches for the best matched book.
-	keypoint_points = allMatches.keypoint_points[bestMatchidx];
-
-	
-    // -- pull out the good matched keypoints for the cover and scene --//
-	for( int i = 0; i < allMatches.goodKeypoints[bestMatchidx].size(); i++)//good_matches.size(); i++ )
-	{
-    cover.push_back( keypoint_points[ allMatches.goodKeypoints[bestMatchidx][i].queryIdx ]);//keypoint_points[ good_matches[i].queryIdx ]);
-    scene.push_back( sceneFeatures.keypoints[allMatches.goodKeypoints[bestMatchidx][i].trainIdx ].pt ); //sceneFeatures.keypoints[ good_matches[i].trainIdx ].pt ); // the scene
-	
-//	goodKeypoints.push_back(sceneFeatures.keypoints[ good_matches[i].trainIdx ]);
-	}
-	
-	// Show keypoints in the result image image.
-//	 Scalar keypointColor = Scalar(255, 0, 0);
-//	 drawKeypoints(image, goodKeypoints, results, keypointColor, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 	
 	// Copy the image to the results.
 	results = image;	
 	
-	//-- Compute Homography using the matching keypoints and RANSAC --//
-	Mat H = findHomography( cover, scene, CV_RANSAC );
+	std::string concatLinks;
 	
-	// Transform the original cover to the scene and then use its corners to define lines which border the location of the actual book.
-	cover_corners = allMatches.corners[bestMatchidx];
-	perspectiveTransform( cover_corners, scene_corners, H);
+	// For each chosen book, show the homography on the result image.
+	for (int chosenIdx = 0; chosenIdx < indexCoversChosen.size(); chosenIdx++){
+		cover.clear();
+		scene.clear();
+	
+		// Use the good keypoint matches for the best matched book.
+		keypoint_points = allMatches.keypoint_points[indexCoversChosen[chosenIdx]];
 
-  //-- Draw lines between the corners (the mapped object in the scene - image_2 ) --//  
-	line( results, scene_corners[0], scene_corners[1], Scalar(0, 255, 0), 4 );
-	line( results, scene_corners[1], scene_corners[2], Scalar( 0, 255, 0), 4 );
-	line( results, scene_corners[2], scene_corners[3], Scalar( 0, 255, 0), 4 );
-	line( results, scene_corners[3], scene_corners[0], Scalar( 0, 255, 0), 4 );
+		// -- pull out the good matched keypoints for the cover and scene --//
+		for( int i = 0; i < allMatches.goodKeypoints[indexCoversChosen[chosenIdx]].size(); i++)
+		{
+			cover.push_back( keypoint_points[ allMatches.goodKeypoints[indexCoversChosen[chosenIdx]][i].queryIdx ]);
+			scene.push_back( sceneFeatures.keypoints[allMatches.goodKeypoints[indexCoversChosen[chosenIdx]][i].trainIdx ].pt ); 
+		}
+		//-- Compute Homography using the matching keypoints and RANSAC --//
+		Mat H = findHomography( cover, scene, CV_RANSAC );
+	
+		// Transform the original cover to the scene and then use its corners to define lines which border the location of the actual book.
+		cover_corners = allMatches.corners[indexCoversChosen[chosenIdx]];
+		perspectiveTransform( cover_corners, scene_corners, H);
+
+	  //-- Draw lines between the corners (the mapped object in the scene - image_2 ) --//  
+		line( results, scene_corners[0], scene_corners[1], Scalar(0, 255, 0), 4 );
+		line( results, scene_corners[1], scene_corners[2], Scalar( 0, 255, 0), 4 );
+		line( results, scene_corners[2], scene_corners[3], Scalar( 0, 255, 0), 4 );
+		line( results, scene_corners[3], scene_corners[0], Scalar( 0, 255, 0), 4 );
+		
+		// For the return value.
+		if (chosenIdx + 1 == indexCoversChosen.size()){
+			// If this is the last link added, do not add separator.	
+			concatLinks = concatLinks + allMatches.link[indexCoversChosen[chosenIdx]];
+		
+		} else {
+			concatLinks = concatLinks + allMatches.link[indexCoversChosen[chosenIdx]] + '|';
+		}
+		
+	}
 
 	// Convert the image to rgb instead of bgr
 	cv::cvtColor(results, results, CV_BGR2RGB);
 		
-	return FinalLink;
-	
+	//return FinalLink;
+	return concatLinks;
 }
 
 
