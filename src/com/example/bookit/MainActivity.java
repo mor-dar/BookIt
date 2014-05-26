@@ -58,7 +58,7 @@ public class MainActivity extends Activity
 	private String[] possibleAISN =
 	{ "0000000000", "0000000000", "0000000000", "0000000000", "0000000000" };
 
-	private final static String INPUT_IMG_FILENAME = "/Documents/img1.jpg";
+	private final static String INPUT_IMG_FILENAME = "/BookIt/img1.jpg";
 	private final static String INPUT_IMG_PATH = Environment
 			.getExternalStorageDirectory().toString() + INPUT_IMG_FILENAME;
 
