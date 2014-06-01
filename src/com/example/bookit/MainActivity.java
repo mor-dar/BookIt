@@ -248,7 +248,7 @@ public class MainActivity extends Activity
 		Log.d(TAG, "xcorners: " + xCorners.get(0)+" "+ xCorners.get(1)+ " "+ xCorners.get(2)+ " "+xCorners.get(3));
 		Log.d(TAG, "ycorners: " + yCorners.get(0)+" "+ yCorners.get(1)+ " "+ yCorners.get(2)+ " "+yCorners.get(3));
 		Log.d(TAG, "rectArea: " + rectArea);
-		Log.d(TAG, "pointArea: " + pointArea);
+		Log.d(TAG, "pointArea: " + pointArea); 
 		if (Math.abs(rectArea - pointArea) < 1){
 			return true;
 		}

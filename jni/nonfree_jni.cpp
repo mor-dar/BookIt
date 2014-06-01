@@ -142,6 +142,7 @@ typedef unsigned char uchar;
 int build_sift_xml();
 std::string find_matches(Mat& image,Mat& results);
 feature getFeature(Mat image);
+bool checkArea(vector<Point2f> scene_corners);
 
 extern "C" {
     JNIEXPORT jstring JNICALL Java_com_example_bookit_NonfreeJNILib_runSift(JNIEnv * env, jobject obj, jlong addrInputMat, jlong addrOutputMat);//, jobjectArray fileNameArray);
@@ -291,9 +292,6 @@ std::string find_matches(Mat& image,Mat& results){
 	fsCovers.release();
 	
 	mean = mean/101;
-
-	
-	
 		
 	// calculate the variance
 	double variance = 0;
@@ -394,7 +392,9 @@ std::string find_matches(Mat& image,Mat& results){
 	// Copy the image to the results.
 	results = image;	
 	
+	// Initialize some variables.
 	std::string concatLinks;
+	bool isValidArea;
 	
 	// For each chosen book, show the homography on the result image.
 	for (int chosenIdx = 0; chosenIdx < indexCoversChosen.size(); chosenIdx++){
@@ -416,36 +416,41 @@ std::string find_matches(Mat& image,Mat& results){
 		// Transform the original cover to the scene and then use its corners to define lines which border the location of the actual book.
 		cover_corners = allMatches.corners[indexCoversChosen[chosenIdx]];
 		perspectiveTransform( cover_corners, scene_corners, H);
+		
+		//-- If the result found is not big enough, we know this is a false match, so we do not use it. --//
+		isValidArea = false;
+		isValidArea = checkArea(scene_corners);
+		
+		// Only add the lines and information if the area is valid.
+		if (isValidArea){
 
-	  //-- Draw lines between the corners (the mapped object in the scene - image_2 ) --//  
-		line( results, scene_corners[0], scene_corners[1], Scalar(0, 255, 0), 4 );
-		line( results, scene_corners[1], scene_corners[2], Scalar( 0, 255, 0), 4 );
-		line( results, scene_corners[2], scene_corners[3], Scalar( 0, 255, 0), 4 );
-		line( results, scene_corners[3], scene_corners[0], Scalar( 0, 255, 0), 4 );
-		
-
-		
-		
-		// For the return value.
-		if (chosenIdx + 1 == indexCoversChosen.size()){
-			// If this is the last link added, do not add separator.	
-			outputStringStream << allMatches.link[indexCoversChosen[chosenIdx]];
-			// Add the four corners of the book to the output.
-			outputStringStream << '|' << scene_corners[0].x << '|' << scene_corners[0].y;
-			outputStringStream << '|' << scene_corners[1].x << '|' << scene_corners[1].y;
-			outputStringStream << '|' << scene_corners[2].x << '|' << scene_corners[2].y;
-			outputStringStream << '|' << scene_corners[3].x << '|' << scene_corners[3].y << '|';
+		  //-- Draw lines between the corners (the mapped object in the scene - image_2 ) --//  
+			line( results, scene_corners[0], scene_corners[1], Scalar(0, 255, 0), 4 );
+			line( results, scene_corners[1], scene_corners[2], Scalar( 0, 255, 0), 4 );
+			line( results, scene_corners[2], scene_corners[3], Scalar( 0, 255, 0), 4 );
+			line( results, scene_corners[3], scene_corners[0], Scalar( 0, 255, 0), 4 );
 			
-			//concatLinks = concatLinks + allMatches.link[indexCoversChosen[chosenIdx]];
-		
-		} else {
-			outputStringStream << allMatches.link[indexCoversChosen[chosenIdx]];
+			// For the return value.
+			if (chosenIdx + 1 == indexCoversChosen.size()){
+				// If this is the last link added, do not add separator.	
+				outputStringStream << allMatches.link[indexCoversChosen[chosenIdx]];
+				// Add the four corners of the book to the output.
+				outputStringStream << '|' << scene_corners[0].x << '|' << scene_corners[0].y;
+				outputStringStream << '|' << scene_corners[1].x << '|' << scene_corners[1].y;
+				outputStringStream << '|' << scene_corners[2].x << '|' << scene_corners[2].y;
+				outputStringStream << '|' << scene_corners[3].x << '|' << scene_corners[3].y << '|';
+				
+				//concatLinks = concatLinks + allMatches.link[indexCoversChosen[chosenIdx]];
 			
-			outputStringStream << '|' << scene_corners[0].x << '|' << scene_corners[0].y;
-			outputStringStream << '|' << scene_corners[1].x << '|' << scene_corners[1].y;
-			outputStringStream << '|' << scene_corners[2].x << '|' << scene_corners[2].y;
-			outputStringStream << '|' << scene_corners[3].x << '|' << scene_corners[3].y << '|';
-			
+			} else {
+				outputStringStream << allMatches.link[indexCoversChosen[chosenIdx]];
+				
+				outputStringStream << '|' << scene_corners[0].x << '|' << scene_corners[0].y;
+				outputStringStream << '|' << scene_corners[1].x << '|' << scene_corners[1].y;
+				outputStringStream << '|' << scene_corners[2].x << '|' << scene_corners[2].y;
+				outputStringStream << '|' << scene_corners[3].x << '|' << scene_corners[3].y << '|';
+				
+			}
 		}
 		
 	}
@@ -514,10 +519,6 @@ int build_sift_xml(){
 	fs.release();
 }
 
-
-
-
-
 feature getFeature(Mat image){
 	// This function calculates the feature using some Detector and Extractor.  
 	// It is done this way for easy swapping of descriptor/extractors.
@@ -526,7 +527,7 @@ feature getFeature(Mat image){
 	feature features;
 	
 	// the maximum number of features to extract.
-	int nFeatures = 2000;
+	int nFeatures = 8000;
 	
 	// Create orb.
 	cv::ORB orb(nFeatures);
@@ -541,3 +542,30 @@ feature getFeature(Mat image){
 	
 	return features;
 }
+
+
+bool checkArea(vector<Point2f> scene_corners){
+	// Define the minimum area in pixels
+	float minArea = 1000;
+	
+	//-- Get the area of the quadrilateral --//
+	
+	// Start by getting the centroid.
+	float centX = (scene_corners[0].x + scene_corners[1].x + scene_corners[2].x + scene_corners[3].x)/4.0;
+	float centY = (scene_corners[0].y + scene_corners[1].y + scene_corners[2].y + scene_corners[3].y)/4.0;
+	
+	float area = 0;
+	
+	area = area + std::abs((float) ((0.5) * ( (scene_corners[0].x * (scene_corners[1].y - centY)) + (scene_corners[1].x * (centY - scene_corners[0].y)) + (centX * (scene_corners[0].y - scene_corners[1].y)) )));
+	area = area + std::abs((float) ((0.5) * ( (scene_corners[1].x * (scene_corners[2].y - centY)) + (scene_corners[2].x * (centY - scene_corners[1].y)) + (centX * (scene_corners[1].y - scene_corners[2].y)) )));
+	area = area + std::abs((float) ((0.5) * ( (scene_corners[2].x * (scene_corners[3].y - centY)) + (scene_corners[3].x * (centY - scene_corners[2].y)) + (centX * (scene_corners[2].y - scene_corners[3].y)) )));
+	area = area + std::abs((float) ((0.5) * ( (scene_corners[3].x * (scene_corners[0].y - centY)) + (scene_corners[0].x * (centY - scene_corners[3].y)) + (centX * (scene_corners[3].y - scene_corners[0].y)) )));
+	
+	if (area > minArea){
+		return true;
+	}
+	return false;
+}
+
+
+
